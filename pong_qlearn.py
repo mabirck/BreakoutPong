@@ -20,33 +20,32 @@ from keras.optimizers import SGD , Adam, RMSprop
 import tensorflow as tf
 
 import gym
-GAME = 'breakout' # the name of the game being played for log files
+GAME = 'pong' # the name of the game being played for log files
 CONFIG = 'nothreshold'
 ACTIONS = 6 # number of valid actions
 GAMMA = 0.90 # decay rate of past observations
 OBSERVATION = 3200. # timesteps to observe before training
-EXPLORE = 1000000. # frames over which to anneal epsilon
-FINAL_EPSILON = 0.1 # final value of epsilon
-INITIAL_EPSILON = 1 # starting value of epsilon
-REPLAY_MEMORY = 1000000 # number of previous transitions to remember
+EXPLORE = 3000. # frames over which to anneal epsilon
+FINAL_EPSILON = 0.0001 # final value of epsilon
+INITIAL_EPSILON = 0.9 # starting value of epsilon
+REPLAY_MEMORY = 50000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
-FRAME_PER_ACTION = 4
+FRAME_PER_ACTION = 1
 LEARNING_RATE = 1e-4
-TOTAL = 10000000
 
-img_rows , img_cols = 84, 84
+img_rows , img_cols = 80, 80
 #Convert image into Black and white
 img_channels = 4 #We stack 4 frames
 
 def buildmodel():
     print("Now we build the model")
     model = Sequential()
-    model.add(Convolution2D(16, 8, 8, subsample=(4, 4), border_mode='same',input_shape=(img_rows,img_cols,img_channels)))  #80*80*4
+    model.add(Convolution2D(32, 8, 8, subsample=(4, 4), border_mode='same',input_shape=(img_rows,img_cols,img_channels)))  #80*80*4
     model.add(Activation('relu'))
-    model.add(Convolution2D(32, 4, 4, subsample=(2, 2), border_mode='same'))
+    model.add(Convolution2D(64, 4, 4, subsample=(2, 2), border_mode='same'))
     model.add(Activation('relu'))
-    #model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same'))
-    #model.add(Activation('relu'))
+    model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same'))
+    model.add(Activation('relu'))
     model.add(Flatten())
     model.add(Dense(256))
     model.add(Activation('relu'))
@@ -61,7 +60,7 @@ def trainNetwork(model,args):
     # open up a game state to communicate with emulator
     #game_state = game.GameState()
     render = args['render']
-    env = gym.envs.make("Breakout-v0")
+    env = gym.envs.make("Pong-v0")
     env.reset()
     if(render == "True"):
        env.render()
@@ -75,7 +74,7 @@ def trainNetwork(model,args):
     if(render == "True"):
        env.render()
     x_t = skimage.color.rgb2gray(x_t)
-    x_t = skimage.transform.resize(x_t,(img_rows, img_cols))
+    x_t = skimage.transform.resize(x_t,(80,80))
     x_t = skimage.exposure.rescale_intensity(x_t,out_range=(0,255))
 
     s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
@@ -128,7 +127,7 @@ def trainNetwork(model,args):
         if(terminal):
             env.reset()
         x_t1 = skimage.color.rgb2gray(x_t1_colored)
-        x_t1 = skimage.transform.resize(x_t1,(img_rows, img_cols))
+        x_t1 = skimage.transform.resize(x_t1,(80,80))
         x_t1 = skimage.exposure.rescale_intensity(x_t1, out_range=(0, 255))
 
         x_t1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1) #1x80x80x1
@@ -194,8 +193,6 @@ def trainNetwork(model,args):
         print("TIMESTEP", t, "/ STATE", state, \
             "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, \
             "/ Q_MAX " , np.max(Q_sa), "/ Loss ", loss)
-        if(t > TOTAL):
-            break
 
     print("Episode finished!")
     print("************************")
