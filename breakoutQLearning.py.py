@@ -130,7 +130,7 @@ for i in xrange(nb_epochs):
     action = np.random.randint(0, 6) #first action of epoch is random
     S = env.reset()
     #print S
-    env.render()
+    #env.render()
     print 'Epoch ', i + 1, 'loss:', loss, "Reward:", rewards, "Total Q:", q_values, "Epsilon", epsilon     
     rewards = 0
     loss = 0.
@@ -149,7 +149,7 @@ for i in xrange(nb_epochs):
                 # Subtract one because actions are either -1, 0, or 1 #DONT DO THAT
                 
                 for i in range(K_frames-1):
-                    env.render()
+                    #env.render()
                     s, r, done, info = env.step(action)
                     ls.append(s)
                     rewards+=r
@@ -163,7 +163,7 @@ for i in xrange(nb_epochs):
             else:
                 
                 for i in range(K_frames-1):
-                    env.render()
+                    #env.render()
                     s, r, done, info = env.step(action)
                     ls.append(s)
                     rewards+=r
@@ -183,7 +183,7 @@ for i in xrange(nb_epochs):
             ls.append(S_prime)
             
             for i in range(K_frames-1):
-	        env.render()
+	        #env.render()
                 s, r, done, info = env.step(action)
                 ls.append(s)
                 rewards+=r
