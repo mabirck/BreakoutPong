@@ -23,11 +23,11 @@ import gym
 GAME = 'breakout' # the name of the game being played for log files
 CONFIG = 'nothreshold'
 ACTIONS = 6 # number of valid actions
-GAMMA = 0.99 # decay rate of past observations
+GAMMA = 0.90 # decay rate of past observations
 OBSERVATION = 3200. # timesteps to observe before training
 EXPLORE = 3000000. # frames over which to anneal epsilon
 FINAL_EPSILON = 0.0001 # final value of epsilon
-INITIAL_EPSILON = 0.9 # starting value of epsilon
+INITIAL_EPSILON = 0.1 # starting value of epsilon
 REPLAY_MEMORY = 50000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
 FRAME_PER_ACTION = 1
@@ -59,9 +59,11 @@ def buildmodel():
 def trainNetwork(model,args):
     # open up a game state to communicate with emulator
     #game_state = game.GameState()
+    render = args['render']
     env = gym.envs.make("Breakout-v0")
     env.reset()
-    env.render()
+    if(render == "True"):
+       env.render()
     # store the previous observations in replay memory
     D = deque()
 
@@ -69,7 +71,8 @@ def trainNetwork(model,args):
     do_nothing = np.zeros(ACTIONS)
     do_nothing[0] = 1
     x_t, r_0, terminal, info = env.step(np.argmax(do_nothing))
-    env.render()
+    if(render == "True"):
+       env.render()
     x_t = skimage.color.rgb2gray(x_t)
     x_t = skimage.transform.resize(x_t,(80,80))
     x_t = skimage.exposure.rescale_intensity(x_t,out_range=(0,255))
@@ -119,7 +122,8 @@ def trainNetwork(model,args):
 
         #run the selected action and observed next state and reward
         x_t1_colored, r_t, terminal, info = env.step(np.argmax(a_t))
-        env.render()
+        if(render=="True"):
+           env.render()
         if(terminal):
             env.reset()
         x_t1 = skimage.color.rgb2gray(x_t1_colored)
@@ -200,6 +204,7 @@ def playGame(args):
 def main():
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-m','--mode', help='Train / Run', required=True)
+    parser.add_argument('-r','--render',help='Render the game', required=False, default=False) 
     args = vars(parser.parse_args())
     playGame(args)
 
