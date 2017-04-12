@@ -1,8 +1,0 @@
-Box(210, 160, 3)
-(210, 160, 3)
-6
-(84, 84) (1, 84, 84, 4)
-Epoch  1 loss: 0 Reward: 0 Total Q: 0 Epsilon 0.99
-Epoch  2 loss: 0.0 Reward: 2.0 Total Q: 0 Epsilon 0.9801
-Epoch  3 loss: 0.0 Reward: 1.0 Total Q: 0 Epsilon 0.970299
-Epoch  4 loss: 0.0 Reward: 3.0 Total Q: 0 Epsilon 0.96059601
