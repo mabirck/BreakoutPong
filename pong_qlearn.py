@@ -10,6 +10,7 @@ import sys
 import random
 import numpy as np
 from collections import deque
+import keras
 
 import json
 from keras.models import model_from_json
@@ -30,11 +31,11 @@ FINAL_EPSILON = 0.1 # final value of epsilon
 INITIAL_EPSILON = 1 # starting value of epsilon
 REPLAY_MEMORY = 50000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
-FRAME_PER_ACTION = 4
+FRAME_PER_ACTION = 1
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
 SAVE_MODEL = 5000
-EPOCH_LENGTH = 50016
+EPOCH_LENGTH = 32
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -50,9 +51,9 @@ def buildmodel():
     #model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same'))
     #model.add(Activation('relu'))
     model.add(Flatten())
-    model.add(Dense(256))
+    model.add(Dense(256, activity_regularizer=keras.regularizers.l1_l2(0.42)))
     model.add(Activation('relu'))
-    model.add(Dense(6))
+    model.add(Dense(6, activity_regularizer=keras.regularizers.l1_l2(0.42)))
 
     adam = Adam(lr=LEARNING_RATE)
     model.compile(loss='mse',optimizer=RMSprop())
@@ -105,6 +106,10 @@ def trainNetwork(model,args):
     Q_total = 0
     loss = 0
     batch_count = 0
+    episode_reward = 0
+    episode_q  = 0
+    nepisodes = 0
+    num_QAs = 1
 
     while (True):
         loss = 0
@@ -123,6 +128,9 @@ def trainNetwork(model,args):
                 max_Q = np.argmax(q)
                 action_index = max_Q
                 a_t[max_Q] = 1
+                num_QAs +=1
+                Q_total+=np.max(q)
+
 
         #We reduced the epsilon gradually
         if epsilon > FINAL_EPSILON and t > OBSERVE:
@@ -130,9 +138,14 @@ def trainNetwork(model,args):
 
         #run the selected action and observed next state and reward
         x_t1_colored, r_t, terminal, info = env.step(np.argmax(a_t))
+        episode_reward+=r_t
+
         if(render=="True"):
            env.render()
         if(terminal):
+            total_reward += episode_reward
+            episode_reward = 0
+            nepisodes +=1
             env.reset()
         x_t1 = skimage.color.rgb2gray(x_t1_colored)
         x_t1 = skimage.transform.resize(x_t1,(img_rows, img_cols))
@@ -177,19 +190,21 @@ def trainNetwork(model,args):
                     targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
 
                 ###### METRICS TO EVALUATE ##############
-                Q_total += np.max(Q_sa)
-                total_reward += reward_t
+
             # targets2 = normalize(targets)
             batch_count+=32
             loss += model.train_on_batch(inputs, targets)
 
-            if(batch_count % EPOCH_LENGTH == 0):
+            if(batch_count % EPOCH_LENGTH == 0 and t >= OBSERVE):
                 print("EPOCH", batch_count/EPOCH_LENGTH, "/ STATE", state, \
                     "/ EPSILON", epsilon, "/ REWARD", total_reward/EPOCH_LENGTH, \
                     "/ Q_Averaged " , Q_total/(EPOCH_LENGTH), "/ Loss ", loss/(EPOCH_LENGTH/32))
                 total_reward = 0
                 Q_total = 0
                 loss = 0
+                nepisodes = 1
+                num_QAs = 1
+
         s_t = s_t1
         t = t + 1
 

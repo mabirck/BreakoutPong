@@ -10,6 +10,7 @@ import sys
 import random
 import numpy as np
 from collections import deque
+import keras
 
 import json
 from keras.models import model_from_json
@@ -26,15 +27,15 @@ ACTIONS = 6 # number of valid actions
 GAMMA = 0.99 # decay rate of past observations
 OBSERVATION = 3200. # timesteps to observe before training
 EXPLORE = 1000000. # frames over which to anneal epsilon
-FINAL_EPSILON = 0.1 # final value of epsilon
-INITIAL_EPSILON = 1 # starting value of epsilon
+FINAL_EPSILON = 0.05 # final value of epsilon
+INITIAL_EPSILON = 0.9 # starting value of epsilon
 REPLAY_MEMORY = 1000000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
-FRAME_PER_ACTION = 4
+FRAME_PER_ACTION = 1
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
 SAVE_MODEL = 5000
-EPOCH_LENGTH = 50016
+EPOCH_LENGTH = 32
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -50,10 +51,9 @@ def buildmodel():
     #model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same'))
     #model.add(Activation('relu'))
     model.add(Flatten())
-    model.add(Dense(256))
+    model.add(Dense(256, activity_regularizer=keras.regularizers.l1_l2(0.42)))
     model.add(Activation('relu'))
-    model.add(Dense(6))
-
+    model.add(Dense(6, activity_regularizer=keras.regularizers.l1_l2(0.42) ))
     adam = Adam(lr=LEARNING_RATE)
     model.compile(loss='mse',optimizer=RMSprop())
     print("We finish building the model")
@@ -78,7 +78,7 @@ def trainNetwork(model,args):
        env.render()
     x_t = skimage.color.rgb2gray(x_t)
     x_t = skimage.transform.resize(x_t,(img_rows, img_cols))
-    x_t = skimage.exposure.rescale_intensity(x_t,out_range=(0,255))
+    x_t = skimage.exposure.rescale_intensity(x_t,out_range=(0,1))
 
     s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
     #print (s_t.shape)
@@ -105,7 +105,10 @@ def trainNetwork(model,args):
     Q_total = 0
     loss = 0
     batch_count = 0
-
+    nepisodes = 1
+    episode_reward = 0
+    episode_q = 0
+    num_QAs = 1
 
     while (True):
         loss = 0
@@ -113,6 +116,7 @@ def trainNetwork(model,args):
         action_index = 0
         r_t = 0
         a_t = np.zeros([ACTIONS])
+        q = np.array([0])
         #choose an action epsilon greedy
         if t % FRAME_PER_ACTION == 0:
             if random.random() <= epsilon:
@@ -124,6 +128,8 @@ def trainNetwork(model,args):
                 max_Q = np.argmax(q)
                 action_index = max_Q
                 a_t[max_Q] = 1
+                Q_total += np.max(q)
+                num_QAs+=1
 
         #We reduced the epsilon gradually
         if epsilon > FINAL_EPSILON and t > OBSERVE:
@@ -131,9 +137,14 @@ def trainNetwork(model,args):
 
         #run the selected action and observed next state and reward
         x_t1_colored, r_t, terminal, info = env.step(np.argmax(a_t))
+        episode_reward+=r_t
+        #episode_q += np.max(q)
         if(render=="True"):
            env.render()
         if(terminal):
+            total_reward += episode_reward
+            episode_reward = 0
+            nepisodes +=1
             env.reset()
         x_t1 = skimage.color.rgb2gray(x_t1_colored)
         x_t1 = skimage.transform.resize(x_t1,(img_rows, img_cols))
@@ -171,27 +182,28 @@ def trainNetwork(model,args):
 
                 targets[i] = model.predict(state_t)  # Hitting each buttom probability
                 Q_sa = model.predict(state_t1)
-
                 if terminal:
                     targets[i, action_t] = reward_t
                 else:
                     targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
 
+
                 ###### METRICS TO EVALUATE ##############
-                Q_total += np.max(Q_sa)
-                total_reward += reward_t
+
             # targets2 = normalize(targets)
 
             batch_count+=32
             loss += model.train_on_batch(inputs, targets)
 
-            if(batch_count % EPOCH_LENGTH == 0):
+            if(batch_count % EPOCH_LENGTH == 0 and t >= OBSERVE):
                 print("EPOCH", batch_count/EPOCH_LENGTH, "/ STATE", state, \
-                    "/ EPSILON", epsilon, "/ REWARD", total_reward/EPOCH_LENGTH, \
-                    "/ Q_Averaged " , Q_total/(EPOCH_LENGTH), "/ Loss ", loss/(EPOCH_LENGTH/32))
+                    "/ EPSILON", epsilon, "/ REWARD", total_reward/nepisodes, \
+                    "/ Q_Averaged " , Q_total/(num_QAs), "/ Loss ", loss/(EPOCH_LENGTH))
                 total_reward = 0
                 Q_total = 0
+                num_QAs = 1
                 loss = 0
+                nepisodes = 1
 
         s_t = s_t1
         t = t + 1
