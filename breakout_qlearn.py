@@ -35,7 +35,7 @@ FRAME_PER_ACTION = 1
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
 SAVE_MODEL = 5000
-EPOCH_LENGTH = 32
+EPOCH_LENGTH = 50016
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
