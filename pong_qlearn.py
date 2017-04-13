@@ -23,16 +23,18 @@ import gym
 GAME = 'pong' # the name of the game being played for log files
 CONFIG = 'nothreshold'
 ACTIONS = 6 # number of valid actions
-GAMMA = 0.90 # decay rate of past observations
+GAMMA = 0.99 # decay rate of past observations
 OBSERVATION = 3200. # timesteps to observe before training
 EXPLORE = 1000000. # frames over which to anneal epsilon
 FINAL_EPSILON = 0.1 # final value of epsilon
 INITIAL_EPSILON = 1 # starting value of epsilon
-REPLAY_MEMORY = 1000000 # number of previous transitions to remember
+REPLAY_MEMORY = 50000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
 FRAME_PER_ACTION = 4
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
+SAVE_MODEL = 5000
+EPOCH_LENGTH = 50016
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -99,6 +101,11 @@ def trainNetwork(model,args):
         epsilon = INITIAL_EPSILON
 
     t = 0
+    total_reward = 0
+    Q_total = 0
+    loss = 0
+    batch_count = 0
+
     while (True):
         loss = 0
         Q_sa = 0
@@ -108,7 +115,7 @@ def trainNetwork(model,args):
         #choose an action epsilon greedy
         if t % FRAME_PER_ACTION == 0:
             if random.random() <= epsilon:
-                print("----------Random Action----------")
+                #print("----------Random Action----------")
                 action_index = random.randrange(ACTIONS)
                 a_t[action_index] = 1
             else:
@@ -147,7 +154,7 @@ def trainNetwork(model,args):
 
 
             inputs = np.zeros((BATCH, s_t.shape[1], s_t.shape[2], s_t.shape[3]))   #32, 80, 80, 4
-            print (inputs.shape)
+            #print (inputs.shape)
             targets = np.zeros((inputs.shape[0], ACTIONS))                         #32, 2
 
             #Now we do the experience replay
@@ -169,14 +176,25 @@ def trainNetwork(model,args):
                 else:
                     targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
 
+                ###### METRICS TO EVALUATE ##############
+                Q_total += np.max(Q_sa)
+                total_reward += reward_t
             # targets2 = normalize(targets)
+            batch_count+=32
             loss += model.train_on_batch(inputs, targets)
 
+            if(batch_count % EPOCH_LENGTH == 0):
+                print("EPOCH", batch_count/EPOCH_LENGTH, "/ STATE", state, \
+                    "/ EPSILON", epsilon, "/ REWARD", total_reward/EPOCH_LENGTH, \
+                    "/ Q_Averaged " , Q_total/(EPOCH_LENGTH), "/ Loss ", loss/(EPOCH_LENGTH/32))
+                total_reward = 0
+                Q_total = 0
+                loss = 0
         s_t = s_t1
         t = t + 1
 
         # save progress every 10000 iterations
-        if t % 1000 == 0:
+        if t % SAVE_MODEL == 0:
             print("Now we save model")
             model.save_weights("model.h5", overwrite=True)
             with open("model.json", "w") as outfile:
@@ -191,9 +209,9 @@ def trainNetwork(model,args):
         else:
             state = "train"
 
-        print("TIMESTEP", t, "/ STATE", state, \
-            "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, \
-            "/ Q_MAX " , np.max(Q_sa), "/ Loss ", loss)
+        #print("TIMESTEP", t, "/ STATE", state, \
+        #    "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, \
+        #    "/ Q_MAX " , np.max(Q_sa), "/ Loss ", loss)
         if(t > TOTAL):
             break
 
