@@ -35,7 +35,9 @@ FRAME_PER_ACTION = 1
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
 SAVE_MODEL = 5000
-EPOCH_LENGTH = 50016
+EPOCH_LENGTH = 32
+
+EVAL_STEPS = 520000
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -102,14 +104,8 @@ def trainNetwork(model,args):
         epsilon = INITIAL_EPSILON
 
     t = 0
-    total_reward = 0
-    Q_total = 0
     loss = 0
     batch_count = 0
-    episode_reward = 0
-    episode_q  = 0
-    nepisodes = 0
-    num_QAs = 1
 
     while (True):
         loss = 0
@@ -128,8 +124,6 @@ def trainNetwork(model,args):
                 max_Q = np.argmax(q)
                 action_index = max_Q
                 a_t[max_Q] = 1
-                num_QAs +=1
-                Q_total+=np.max(q)
 
 
         #We reduced the epsilon gradually
@@ -138,14 +132,10 @@ def trainNetwork(model,args):
 
         #run the selected action and observed next state and reward
         x_t1_colored, r_t, terminal, info = env.step(np.argmax(a_t))
-        episode_reward+=r_t
 
         if(render=="True"):
            env.render()
         if(terminal):
-            total_reward += episode_reward
-            episode_reward = 0
-            nepisodes +=1
             env.reset()
         x_t1 = skimage.color.rgb2gray(x_t1_colored)
         x_t1 = skimage.transform.resize(x_t1,(img_rows, img_cols))
@@ -163,8 +153,6 @@ def trainNetwork(model,args):
         if t > OBSERVE:
             #sample a minibatch to train on
             minibatch = random.sample(D, BATCH)
-
-
 
             inputs = np.zeros((BATCH, s_t.shape[1], s_t.shape[2], s_t.shape[3]))   #32, 80, 80, 4
             #print (inputs.shape)
@@ -196,9 +184,12 @@ def trainNetwork(model,args):
             loss += model.train_on_batch(inputs, targets)
 
             if(batch_count % EPOCH_LENGTH == 0 and t >= OBSERVE):
+
+                for i ste
+
                 print("EPOCH", batch_count/EPOCH_LENGTH, "/ STATE", state, \
                     "/ EPSILON", epsilon, "/ REWARD", total_reward/EPOCH_LENGTH, \
-                    "/ Q_Averaged " , Q_total/(EPOCH_LENGTH), "/ Loss ", loss/(EPOCH_LENGTH/32))
+                    "/ Q_Averaged " , Q_total/(EPOCH_LENGTH), "/ Loss ", loss/(EPOCH_LENGTH))
                 total_reward = 0
                 Q_total = 0
                 loss = 0

@@ -21,13 +21,16 @@ from keras.optimizers import SGD , Adam, RMSprop
 import tensorflow as tf
 
 import gym
+import test
+
 GAME = 'breakout' # the name of the game being played for log files
 CONFIG = 'nothreshold'
 ACTIONS = 6 # number of valid actions
 GAMMA = 0.99 # decay rate of past observations
 OBSERVATION = 3200. # timesteps to observe before training
 EXPLORE = 1000000. # frames over which to anneal epsilon
-FINAL_EPSILON = 0.05 # final value of epsilon
+EVAL_EPSILON = 0.05
+FINAL_EPSILON = 0.1 # final value of epsilon
 INITIAL_EPSILON = 0.9 # starting value of epsilon
 REPLAY_MEMORY = 1000000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
@@ -36,6 +39,8 @@ LEARNING_RATE = 1e-4
 TOTAL = 10000000
 SAVE_MODEL = 5000
 EPOCH_LENGTH = 50016
+
+EVAL_STEPS = 520000
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -101,14 +106,9 @@ def trainNetwork(model,args):
         epsilon = INITIAL_EPSILON
 
     t = 0
-    total_reward = 0
-    Q_total = 0
     loss = 0
     batch_count = 0
-    nepisodes = 1
-    episode_reward = 0
-    episode_q = 0
-    num_QAs = 1
+
 
     while (True):
         loss = 0
@@ -116,7 +116,7 @@ def trainNetwork(model,args):
         action_index = 0
         r_t = 0
         a_t = np.zeros([ACTIONS])
-        q = np.array([0])
+
         #choose an action epsilon greedy
         if t % FRAME_PER_ACTION == 0:
             if random.random() <= epsilon:
@@ -128,8 +128,6 @@ def trainNetwork(model,args):
                 max_Q = np.argmax(q)
                 action_index = max_Q
                 a_t[max_Q] = 1
-                Q_total += np.max(q)
-                num_QAs+=1
 
         #We reduced the epsilon gradually
         if epsilon > FINAL_EPSILON and t > OBSERVE:
@@ -137,14 +135,10 @@ def trainNetwork(model,args):
 
         #run the selected action and observed next state and reward
         x_t1_colored, r_t, terminal, info = env.step(np.argmax(a_t))
-        episode_reward+=r_t
-        #episode_q += np.max(q)
+
         if(render=="True"):
            env.render()
         if(terminal):
-            total_reward += episode_reward
-            episode_reward = 0
-            nepisodes +=1
             env.reset()
         x_t1 = skimage.color.rgb2gray(x_t1_colored)
         x_t1 = skimage.transform.resize(x_t1,(img_rows, img_cols))
@@ -196,14 +190,12 @@ def trainNetwork(model,args):
             loss += model.train_on_batch(inputs, targets)
 
             if(batch_count % EPOCH_LENGTH == 0 and t >= OBSERVE):
+
+                total_reward, avg_reward, max_reward, Q_total, Q_avg = test.test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS,render)
+
                 print("EPOCH", batch_count/EPOCH_LENGTH, "/ STATE", state, \
-                    "/ EPSILON", epsilon, "/ REWARD", total_reward/nepisodes, \
-                    "/ Q_Averaged " , Q_total/(num_QAs), "/ Loss ", loss/(EPOCH_LENGTH))
-                total_reward = 0
-                Q_total = 0
-                num_QAs = 1
-                loss = 0
-                nepisodes = 1
+                    "/ EPSILON", epsilon, "/ REWARD", total_reward,  "/ MAX REWARD", max_reward, \
+                     "/AVG REWARD", avg_reward, "/ Q_total " , Q_total,  "/ Q_avg", Q_avg , "/ Loss ", loss/(EPOCH_LENGTH))
 
         s_t = s_t1
         t = t + 1
