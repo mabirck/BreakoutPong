@@ -31,13 +31,11 @@ FINAL_EPSILON = 0.1 # final value of epsilon
 INITIAL_EPSILON = 1 # starting value of epsilon
 REPLAY_MEMORY = 50000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
-FRAME_PER_ACTION = 4
+FRAME_PER_ACTION = 1
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
 SAVE_MODEL = 5000
 EPOCH_LENGTH = 32
-
-EVAL_STEPS = 5200
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -46,9 +44,9 @@ img_channels = 4 #We stack 4 frames
 def buildmodel():
     print("Now we build the model")
     model = Sequential()
-    model.add(Convolution2D(16, (8,8), strides=(4, 4), padding='same',input_shape=(img_rows,img_cols,img_channels)))  #80*80*4
+    model.add(Convolution2D(16, 8, 8, subsample=(4, 4), border_mode='same',input_shape=(img_rows,img_cols,img_channels)))  #80*80*4
     model.add(Activation('relu'))
-    model.add(Convolution2D(32, (4, 4), strides=(2, 2), padding='same'))
+    model.add(Convolution2D(32, 4, 4, subsample=(2, 2), border_mode='same'))
     model.add(Activation('relu'))
     #model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same'))
     #model.add(Activation('relu'))
@@ -185,7 +183,7 @@ def trainNetwork(model,args):
 
             if(batch_count % EPOCH_LENGTH == 0 and t >= OBSERVE):
 
-                for i ste
+                for i
 
                 print("EPOCH", batch_count/EPOCH_LENGTH, "/ STATE", state, \
                     "/ EPSILON", epsilon, "/ REWARD", total_reward/EPOCH_LENGTH, \

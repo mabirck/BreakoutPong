@@ -40,7 +40,7 @@ TOTAL = 10000000
 SAVE_MODEL = 50000
 EPOCH_LENGTH = 50016
 
-EVAL_STEPS = 10000
+EVAL_STEPS = 1000
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -49,17 +49,16 @@ img_channels = 4 #We stack 4 frames
 def buildmodel():
     print("Now we build the model")
     model = Sequential()
-    model.add(Convolution2D(16, (8,8), strides=(4, 4), padding='same',input_shape=(img_rows,img_cols,img_channels)))  #80*80*4
+    model.add(Convolution2D(32, (8,8), strides=(4, 4), padding='same',input_shape=(img_rows,img_cols,img_channels)))  #80*80*4
     model.add(Activation('relu'))
-    model.add(Convolution2D(32, (4, 4), strides=(2, 2), padding='same'))
+    model.add(Convolution2D(64, (4, 4), strides=(2, 2), padding='same'))
     model.add(Activation('relu'))
-    #model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same'))
-    #model.add(Activation('relu'))
+    model.add(Convolution2D(64, (3, 3), strides=(1, 1), padding='same'))
+    model.add(Activation('relu'))
     model.add(Flatten())
-    model.add(Dense(256, activity_regularizer=keras.regularizers.l1_l2(0.42)))
+    model.add(Dense(512))
     model.add(Activation('relu'))
-    model.add(Dense(6, activity_regularizer=keras.regularizers.l1_l2(0.42) ))
-    adam = Adam(lr=LEARNING_RATE)
+    model.add(Dense(6))
     model.compile(loss='mse',optimizer=RMSprop())
     print("We finish building the model")
     return model
@@ -83,7 +82,7 @@ def trainNetwork(model,args):
        env.render()
     x_t = skimage.color.rgb2gray(x_t)
     x_t = skimage.transform.resize(x_t,(img_rows, img_cols))
-    x_t = skimage.exposure.rescale_intensity(x_t,out_range=(0,1))
+    x_t = skimage.exposure.rescale_intensity(x_t,out_range=(0,255))
 
     s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
     #print (s_t.shape)
@@ -115,10 +114,9 @@ def trainNetwork(model,args):
         Q_sa = 0
         action_index = 0
         r_t = 0
-        a_t = np.zeros([ACTIONS])
-
         #choose an action epsilon greedy
         if t % FRAME_PER_ACTION == 0:
+            a_t = np.zeros([ACTIONS])
             if random.random() <= epsilon:
                 #print("----------Random Action----------")
                 action_index = random.randrange(ACTIONS)
@@ -156,7 +154,7 @@ def trainNetwork(model,args):
         if t > OBSERVE:
 
             if val_samples == None:
-                val_samples = random.sample(D, BATCH)
+                val_samples = random.sample(D, BATCH*10)
                 val_samples = np.asarray(val_samples)
 
             #sample a minibatch to train on
@@ -185,7 +183,10 @@ def trainNetwork(model,args):
                     targets[i, action_t] = reward_t
                 else:
                     targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
-
+                    if(targets[i, action_t] < -1):
+                        targets[i, action_t] = -1
+                    elif(targets[i, action_t] > 1):
+                        targets[i, action_t] = 1
 
                 ###### METRICS TO EVALUATE ##############
 

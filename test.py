@@ -89,8 +89,12 @@ def test(model, val_samples, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION
     Q_total = np.empty(val_samples.shape[0])
 
     for k, s in enumerate(val_samples):
-        Q_total[k] = np.argmax(model.predict(s[0]))
+        Q_total[k] = np.max(model.predict(s[0]))
 
-    Q_avg = Q_total.mean()
-    Q_total = Q_total.sum()
+    if val_samples != None:
+        Q_avg = np.mean(Q_total)
+        Q_total = np.sum(Q_total)
+    else:
+        Q_avg = 0
+        Q_total = 0
     return  total_reward, avg_reward, max_reward, Q_total, Q_avg
