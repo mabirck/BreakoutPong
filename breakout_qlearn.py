@@ -31,16 +31,16 @@ OBSERVATION = 3200. # timesteps to observe before training
 EXPLORE = 1000000. # frames over which to anneal epsilon
 EVAL_EPSILON = 0.05
 FINAL_EPSILON = 0.1 # final value of epsilon
-INITIAL_EPSILON = 0.9 # starting value of epsilon
+INITIAL_EPSILON = 0.99 # starting value of epsilon
 REPLAY_MEMORY = 1000000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
 FRAME_PER_ACTION = 1
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
-SAVE_MODEL = 5000
+SAVE_MODEL = 50000
 EPOCH_LENGTH = 50016
 
-EVAL_STEPS = 520000
+EVAL_STEPS = 52000
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -191,7 +191,7 @@ def trainNetwork(model,args):
 
             if(batch_count % EPOCH_LENGTH == 0 and t >= OBSERVE):
 
-                total_reward, avg_reward, max_reward, Q_total, Q_avg = test.test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS,render)
+                total_reward, avg_reward, max_reward, Q_total, Q_avg = test.test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION,render)
 
                 print("EPOCH", batch_count/EPOCH_LENGTH, "/ STATE", state, \
                     "/ EPSILON", epsilon, "/ REWARD", total_reward,  "/ MAX REWARD", max_reward, \

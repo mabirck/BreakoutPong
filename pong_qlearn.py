@@ -31,13 +31,13 @@ FINAL_EPSILON = 0.1 # final value of epsilon
 INITIAL_EPSILON = 1 # starting value of epsilon
 REPLAY_MEMORY = 50000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
-FRAME_PER_ACTION = 1
+FRAME_PER_ACTION = 4
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
 SAVE_MODEL = 5000
 EPOCH_LENGTH = 32
 
-EVAL_STEPS = 520000
+EVAL_STEPS = 5200
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
