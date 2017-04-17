@@ -40,7 +40,7 @@ TOTAL = 10000000
 SAVE_MODEL = 50000
 EPOCH_LENGTH = 50016
 
-EVAL_STEPS = 1000
+EVAL_STEPS = 10000
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
