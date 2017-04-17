@@ -155,7 +155,7 @@ def trainNetwork(model,args):
 
                 inputs[i:i + 1] = state_t    #I saved down s_t
 
-                targets[i] = model.predict(state_t)  # Hitting each buttom probability
+                #targets[i] = model.predict(state_t)  # Hitting each buttom probability
                 Q_sa = model.predict(state_t1)
 
                 if terminal:

@@ -12,6 +12,8 @@ import numpy as np
 from collections import deque
 import keras
 
+import matplotlib.pyplot as plt
+
 import json
 from keras.models import model_from_json
 from keras.models import Sequential
@@ -32,7 +34,7 @@ EXPLORE = 1000000. # frames over which to anneal epsilon
 EVAL_EPSILON = 0.05
 FINAL_EPSILON = 0.1 # final value of epsilon
 INITIAL_EPSILON = 0.99 # starting value of epsilon
-REPLAY_MEMORY = 1000000 # number of previous transitions to remember
+REPLAY_MEMORY = 50000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
 FRAME_PER_ACTION = 4
 LEARNING_RATE = 1e-4
@@ -40,7 +42,7 @@ TOTAL = 10000000
 SAVE_MODEL = 50000
 EPOCH_LENGTH = 50016
 
-EVAL_STEPS = 10000
+EVAL_STEPS = 20000
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -59,11 +61,15 @@ def buildmodel():
     model.add(Dense(512))
     model.add(Activation('relu'))
     model.add(Dense(6))
+
     model.compile(loss='mse',optimizer=RMSprop())
     print("We finish building the model")
     return model
 
 def trainNetwork(model,args):
+
+    np.random.seed(7)
+
     # open up a game state to communicate with emulator
     #game_state = game.GameState()
     render = args['render']
@@ -83,6 +89,8 @@ def trainNetwork(model,args):
     x_t = skimage.color.rgb2gray(x_t)
     x_t = skimage.transform.resize(x_t,(img_rows, img_cols))
     x_t = skimage.exposure.rescale_intensity(x_t,out_range=(0,255))
+    #print (np.mean(x_t))
+    #x_t = x_t / 255.0
 
     s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
     #print (s_t.shape)
@@ -97,8 +105,10 @@ def trainNetwork(model,args):
         epsilon = FINAL_EPSILON
         print ("Now we load weight")
         model.load_weights("model.h5")
-        adam = Adam(lr=LEARNING_RATE)
-        model.compile(loss='mse',optimizer=adam)
+
+        model.compile(loss='mse',optimizer=RMSprop())
+        print("We finish building the model")
+
         print ("Weight load successfully")
     else:                       #We go to training mode
         OBSERVE = OBSERVATION
@@ -119,7 +129,7 @@ def trainNetwork(model,args):
             a_t = np.zeros([ACTIONS])
             if random.random() <= epsilon:
                 #print("----------Random Action----------")
-                action_index = random.randrange(ACTIONS)
+                action_index = np.random.randint(6)
                 a_t[action_index] = 1
             else:
                 q = model.predict(s_t)       #input a stack of 4 images, get the prediction
@@ -140,7 +150,8 @@ def trainNetwork(model,args):
             env.reset()
         x_t1 = skimage.color.rgb2gray(x_t1_colored)
         x_t1 = skimage.transform.resize(x_t1,(img_rows, img_cols))
-        x_t1 = skimage.exposure.rescale_intensity(x_t1, out_range=(0, 255))
+        #x_t1 = skimage.exposure.rescale_intensity(x_t1, out_range=(0, 255))
+        x_t1 = x_t1 / 255.0
 
         x_t1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1) #1x80x80x1
         s_t1 = np.append(x_t1, s_t[:, :, :, :3], axis=3)
@@ -154,7 +165,7 @@ def trainNetwork(model,args):
         if t > OBSERVE:
 
             if val_samples == None:
-                val_samples = random.sample(D, BATCH*10)
+                val_samples = random.sample(D, 5000)
                 val_samples = np.asarray(val_samples)
 
             #sample a minibatch to train on
@@ -169,6 +180,9 @@ def trainNetwork(model,args):
             #Now we do the experience replay
             for i in range(0, len(minibatch)):
                 state_t = minibatch[i][0]
+                #print (state_t.shape)
+                #plt.imshow(state_t[0, :, :, 0])
+                #plt.show()
                 action_t = minibatch[i][1]   #This is action index
                 reward_t = minibatch[i][2]
                 state_t1 = minibatch[i][3]
@@ -177,16 +191,14 @@ def trainNetwork(model,args):
 
                 inputs[i:i + 1] = state_t    #I saved down s_t
 
-                targets[i] = model.predict(state_t)  # Hitting each buttom probability
+                #targets[i] = model.predict(state_t)  # Hitting each buttom probability
                 Q_sa = model.predict(state_t1)
+                #print (action_t)
                 if terminal:
                     targets[i, action_t] = reward_t
                 else:
-                    targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
-                    if(targets[i, action_t] < -1):
-                        targets[i, action_t] = -1
-                    elif(targets[i, action_t] > 1):
-                        targets[i, action_t] = 1
+                    targets[i, action_t] = reward_t + GAMMA * (np.max(Q_sa))
+
 
                 ###### METRICS TO EVALUATE ##############
 
