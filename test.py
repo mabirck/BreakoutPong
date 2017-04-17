@@ -47,6 +47,7 @@ def test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, render):
     s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])  #1*80*80*4
 
     for steps in range(EVAL_STEPS):
+        a_t = np.zeros([ACTIONS])
         if np.random.random() <= epsilon:
             #print("----------Random Action----------")
             action_index = random.randrange(ACTIONS)
@@ -67,7 +68,9 @@ def test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, render):
         if(render=="True"):
            env.render()
         if(terminal):
-            max_reward = np.max(max_reward, episode_reward)
+            if(episode_reward > max_reward):
+                max_reward = episode_reward
+
             total_reward += episode_reward
             nepisodes += 1
             episode_reward = 0
@@ -83,6 +86,6 @@ def test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, render):
         s_t = s_t1
 
     avg_reward = total_reward/nepisodes
-    Q_avg = Q_total/num_QAs
+    Q_avg = Q_total/num_QAs/nepisodes
 
     return  total_reward, avg_reward, max_reward, Q_total, Q_avg
