@@ -34,13 +34,13 @@ FINAL_EPSILON = 0.1 # final value of epsilon
 INITIAL_EPSILON = 0.99 # starting value of epsilon
 REPLAY_MEMORY = 1000000 # number of previous transitions to remember
 BATCH = 32 # size of minibatch
-FRAME_PER_ACTION = 1
+FRAME_PER_ACTION = 4
 LEARNING_RATE = 1e-4
 TOTAL = 10000000
 SAVE_MODEL = 50000
 EPOCH_LENGTH = 50016
 
-EVAL_STEPS = 52000
+EVAL_STEPS = 10000
 
 img_rows , img_cols = 84, 84
 #Convert image into Black and white
@@ -91,7 +91,7 @@ def trainNetwork(model,args):
     #In Keras, need to reshape
     s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])  #1*80*80*4
 
-
+    val_samples = None
 
     if args['mode'] == 'Run':
         OBSERVE = 999999999    #We keep observe, never train
@@ -154,6 +154,11 @@ def trainNetwork(model,args):
 
         #only train if done observing
         if t > OBSERVE:
+
+            if val_samples == None:
+                val_samples = random.sample(D, BATCH)
+                val_samples = np.asarray(val_samples)
+
             #sample a minibatch to train on
             minibatch = random.sample(D, BATCH)
 
@@ -191,7 +196,7 @@ def trainNetwork(model,args):
 
             if(batch_count % EPOCH_LENGTH == 0 and t >= OBSERVE):
 
-                total_reward, avg_reward, max_reward, Q_total, Q_avg = test.test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION,render)
+                total_reward, avg_reward, max_reward, Q_total, Q_avg = test.test(model, val_samples, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION,render)
 
                 print("EPOCH", batch_count/EPOCH_LENGTH, "/ STATE", state, \
                     "/ EPSILON", epsilon, "/ REWARD", total_reward,  "/ MAX REWARD", max_reward, \

@@ -11,7 +11,7 @@ img_rows , img_cols = 84, 84
 img_channels = 4 #We stack 4 frames
 
 
-def test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION, render):
+def test(model, val_samples, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION, render):
     env = gym.envs.make('Breakout-v0')
     env.reset()
 
@@ -59,8 +59,6 @@ def test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION, render):
                 max_Q = np.argmax(q)
                 action_index = max_Q
                 a_t[max_Q] = 1
-                Q_total += np.max(q)
-                num_QAs+=1
 
         x_t1_colored, r_t, terminal, info = env.step(np.argmax(a_t))
         episode_reward += r_t
@@ -72,7 +70,6 @@ def test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION, render):
         if(terminal):
             if(episode_reward > max_reward):
                 max_reward = episode_reward
-
             total_reward += episode_reward
             nepisodes += 1
             episode_reward = 0
@@ -88,6 +85,12 @@ def test(model, EVAL_STEPS, EVAL_EPSILON, ACTIONS, FRAME_PER_ACTION, render):
         s_t = s_t1
 
     avg_reward = total_reward/nepisodes
-    Q_avg = Q_total/num_QAs
 
+    Q_total = np.empty(val_samples.shape[0])
+
+    for k, s in enumerate(val_samples):
+        Q_total[k] = np.argmax(model.predict(s[0]))
+
+    Q_avg = Q_total.mean()
+    Q_total = Q_total.sum()
     return  total_reward, avg_reward, max_reward, Q_total, Q_avg
